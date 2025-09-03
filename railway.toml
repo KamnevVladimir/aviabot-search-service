@@ -1,0 +1,16 @@
+[deploy]
+builder = "Dockerfile"
+dockerfilePath = "Dockerfile"
+healthcheckPath = "/health"
+healthcheckTimeout = 10
+healthcheckInterval = 30
+restartPolicyType = "always"
+restartPolicyMaxRetries = 3
+
+[[deploy.environmentVariables]]
+name = "ENVIRONMENT"
+value = "production"
+
+[[deploy.environmentVariables]]
+name = "PORT"
+value = "$PORT"
