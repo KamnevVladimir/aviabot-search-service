@@ -10,7 +10,3 @@ restartPolicyMaxRetries = 3
 [[deploy.environmentVariables]]
 name = "ENVIRONMENT"
 value = "production"
-
-[[deploy.environmentVariables]]
-name = "PORT"
-value = "$PORT"
