@@ -5,11 +5,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	app "aviasales-bot/search-service/internal/application"
 	api "aviasales-bot/search-service/internal/infrastructure/aviasales"
 	httpiface "aviasales-bot/search-service/internal/interfaces/http"
+	"aviasales-bot/search-service/internal/monitor"
 	obslogger "aviasales-bot/search-service/internal/observability/logger"
 
 	shared "github.com/KamnevVladimir/aviabot-shared-logging"
@@ -37,6 +40,10 @@ func main() {
 		defer lg.Close()
 	}
 
+	// health monitor
+	hm := monitor.New(lg)
+	hm.ServiceStart("v1.0.0")
+
 	client := api.NewClient(baseURL, token, marker, api.WithLogger(lg))
 
 	// adapter implements both interfaces for handler
@@ -57,7 +64,32 @@ func main() {
 		addr = ":8084"
 	}
 
-	// simple startup log
+	// periodic health reporting
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		t := time.NewTicker(30 * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				hm.ReportHealth(ctx)
+			}
+		}
+	}()
+
+	// graceful shutdown
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+		<-sig
+		hm.ServiceStop()
+		cancel()
+		os.Exit(0)
+	}()
+
 	lg.Info("service_start", map[string]interface{}{"addr": addr, "ts": time.Now().UTC().Format(time.RFC3339)})
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
