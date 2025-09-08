@@ -42,8 +42,3 @@ type FlightSearcher interface {
 	// FormatFlightMessage форматирует сообщение с билетами для пользователя
 	FormatFlightMessage(originCity, destCity string, flights []Flight, passengers int) string
 }
-
-// Searcher legacy интерфейс для обратной совместимости
-type Searcher interface {
-	Search(ctx context.Context, p SearchParams) ([]map[string]any, error)
-}
