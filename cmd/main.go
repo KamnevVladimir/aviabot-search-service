@@ -12,8 +12,8 @@ import (
 	app "aviasales-bot/search-service/internal/application"
 	api "aviasales-bot/search-service/internal/infrastructure/aviasales"
 	httpiface "aviasales-bot/search-service/internal/interfaces/http"
-	"aviasales-bot/search-service/internal/monitor"
 	obslogger "aviasales-bot/search-service/internal/observability/logger"
+	"aviasales-bot/search-service/internal/monitor"
 
 	shared "github.com/KamnevVladimir/aviabot-shared-logging"
 )
@@ -46,7 +46,6 @@ func main() {
 
 	client := api.NewClient(baseURL, token, marker, api.WithLogger(lg))
 
-	// adapter implements both interfaces for handler
 	adapter := &clientAdapter{c: client}
 
 	h := httpiface.NewHandlerWithLogger(adapter, convertLogger(lg))
@@ -94,7 +93,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
-// clientAdapter адаптер который реализует оба интерфейса
+// clientAdapter адаптер который реализует FlightSearcher интерфейс
 type clientAdapter struct{ c *api.Client }
 
 // Реализация нового FlightSearcher интерфейса
@@ -178,21 +177,6 @@ func (a *clientAdapter) FormatFlightMessage(originCity, destCity string, flights
 	}
 
 	return a.c.FormatFlightMessage(originCity, destCity, apiFlights, passengers)
-}
-
-// Реализация legacy Searcher интерфейса для обратной совместимости
-func (a *clientAdapter) Search(ctx context.Context, p app.SearchParams) ([]map[string]any, error) {
-	// Конвертируем в api.SearchParams с поддержкой старого формата Month
-	apiParams := api.SearchParams{
-		Origin:      p.Origin,
-		Destination: p.Destination,
-		DepartDate:  p.DepartDate,
-		ReturnDate:  p.ReturnDate,
-		Currency:    p.Currency,
-		Limit:       p.Limit,
-	}
-
-	return a.c.Search(ctx, apiParams)
 }
 
 // convertLogger adapts observability logger to handler's minimal interface

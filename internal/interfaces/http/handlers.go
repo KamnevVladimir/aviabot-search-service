@@ -11,18 +11,12 @@ import (
 
 type handler struct {
 	fs     app.FlightSearcher // Новый интерфейс
-	s      app.Searcher       // Legacy интерфейс
 	logger loggerInterface
 }
 
 // NewHandler создает новый HTTP handler с поддержкой нового интерфейса
 func NewHandler(fs app.FlightSearcher) http.Handler {
-	// Приводим к legacy интерфейсу если возможно для обратной совместимости
-	var legacySearcher app.Searcher
-	if s, ok := fs.(app.Searcher); ok {
-		legacySearcher = s
-	}
-	return &handler{fs: fs, s: legacySearcher}
+	return &handler{fs: fs}
 }
 
 // loggerInterface describes minimal logger used by handlers
@@ -33,11 +27,7 @@ type loggerInterface interface {
 
 // NewHandlerWithLogger allows injecting a logger for http handlers
 func NewHandlerWithLogger(fs app.FlightSearcher, lg loggerInterface) http.Handler {
-	var legacySearcher app.Searcher
-	if s, ok := fs.(app.Searcher); ok {
-		legacySearcher = s
-	}
-	return &handler{fs: fs, s: legacySearcher, logger: lg}
+	return &handler{fs: fs, logger: lg}
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -47,8 +37,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch r.URL.Path {
-	case "/search":
-		h.handleLegacySearch(w, r)
 	case "/flights/search":
 		h.handleFlightSearch(w, r)
 	case "/flights/message":
@@ -56,38 +44,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
-}
-
-// handleLegacySearch обрабатывает legacy запросы /search
-func (h *handler) handleLegacySearch(w http.ResponseWriter, r *http.Request) {
-	if h.s == nil {
-		w.WriteHeader(http.StatusNotImplemented)
-		return
-	}
-
-	q := r.URL.Query()
-	p := app.SearchParams{
-		Origin:      coalesce(q.Get("origin"), "MOW"),
-		Destination: coalesce(q.Get("destination"), "PAR"),
-		DepartDate:  coalesce(q.Get("depart_date"), coalesce(q.Get("month"), "2024-12")),
-		Currency:    coalesce(q.Get("currency"), "rub"),
-		Limit:       3,
-	}
-
-	ctx := r.Context()
-	res, err := h.s.Search(ctx, p)
-	if err != nil {
-		w.WriteHeader(http.StatusBadGateway)
-		return
-	}
-
-	if len(res) > 3 {
-		res = res[:3]
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(res)
 }
 
 // handleFlightSearch обрабатывает новые запросы /flights/search
