@@ -12,8 +12,8 @@ import (
 	app "aviasales-bot/search-service/internal/application"
 	api "aviasales-bot/search-service/internal/infrastructure/aviasales"
 	httpiface "aviasales-bot/search-service/internal/interfaces/http"
-	obslogger "aviasales-bot/search-service/internal/observability/logger"
 	"aviasales-bot/search-service/internal/monitor"
+	obslogger "aviasales-bot/search-service/internal/observability/logger"
 
 	shared "github.com/KamnevVladimir/aviabot-shared-logging"
 )
