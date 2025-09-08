@@ -163,6 +163,16 @@ func TestFlightMessage_ReturnsFormattedMessage(t *testing.T) {
 	}
 }
 
+func TestFlightMessage_MissingParams_ReturnsBadRequest(t *testing.T) {
+    h := NewHandler(&mockFlightSearcher{})
+    r := httptest.NewRequest(http.MethodGet, "/flights/message", nil)
+    w := httptest.NewRecorder()
+    h.ServeHTTP(w, r)
+    if w.Code != http.StatusBadRequest {
+        t.Fatalf("expected 400, got %d", w.Code)
+    }
+}
+
 func TestFlightSearch_ErrorFromSearcher(t *testing.T) {
 	flightSearcher := &mockFlightSearcher{shouldError: true}
 	h := NewHandler(flightSearcher)

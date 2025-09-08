@@ -305,25 +305,3 @@ func (c *Client) formatDuration(minutes int) string {
 	mins := minutes % 60
 	return fmt.Sprintf("%dч %02dм", hours, mins)
 }
-
-// Legacy метод для обратной совместимости (будет удален)
-func (c *Client) Search(ctx context.Context, p SearchParams) ([]map[string]any, error) {
-	// Конвертируем в старый формат для обратной совместимости
-	flights, err := c.SearchCheap(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []map[string]any
-	for _, flight := range flights {
-		flightMap := map[string]any{
-			"price":       flight.Price,
-			"origin":      flight.Origin,
-			"destination": flight.Destination,
-			"airline":     flight.Airline,
-		}
-		result = append(result, flightMap)
-	}
-
-	return result, nil
-}
