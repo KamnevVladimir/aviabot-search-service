@@ -5,10 +5,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	app "aviasales-bot/search-service/internal/application"
 	api "aviasales-bot/search-service/internal/infrastructure/aviasales"
 	httpiface "aviasales-bot/search-service/internal/interfaces/http"
+	obslogger "aviasales-bot/search-service/internal/observability/logger"
+
+	shared "github.com/KamnevVladimir/aviabot-shared-logging"
 )
 
 func main() {
@@ -25,18 +29,23 @@ func main() {
 		baseURL = "https://api.travelpayouts.com"
 	}
 
-	client := api.NewClient(baseURL, token, marker)
+	// init shared logging client if LOGGING_URL provided
+	var lg obslogger.Logger = obslogger.NoopLogger{}
+	if loggingURL := os.Getenv("LOGGING_URL"); loggingURL != "" {
+		c := shared.NewClient(loggingURL, "search-service")
+		lg = obslogger.NewSharedAdapter(c)
+		defer lg.Close()
+	}
 
-	// Создаем адаптер который реализует оба интерфейса
+	client := api.NewClient(baseURL, token, marker, api.WithLogger(lg))
+
+	// adapter implements both interfaces for handler
 	adapter := &clientAdapter{c: client}
 
-	// Создаем handler с новым интерфейсом
-	h := httpiface.NewHandler(adapter)
+	h := httpiface.NewHandlerWithLogger(adapter, convertLogger(lg))
 
-	// Настраиваем роутинг для всех endpoints
-	http.Handle("/", h) // Обрабатываем все запросы через один handler
-
-	// Health check endpoint
+	// Routing
+	http.Handle("/", h)
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -48,13 +57,8 @@ func main() {
 		addr = ":8084"
 	}
 
-	log.Printf("🚀 search-service listening on %s", addr)
-	log.Printf("📍 Available endpoints:")
-	log.Printf("   GET /search - Legacy search endpoint")
-	log.Printf("   GET /flights/search - New flight search")
-	log.Printf("   GET /flights/message - Formatted flight messages")
-	log.Printf("   GET /health - Health check")
-
+	// simple startup log
+	lg.Info("service_start", map[string]interface{}{"addr": addr, "ts": time.Now().UTC().Format(time.RFC3339)})
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
@@ -158,3 +162,16 @@ func (a *clientAdapter) Search(ctx context.Context, p app.SearchParams) ([]map[s
 
 	return a.c.Search(ctx, apiParams)
 }
+
+// convertLogger adapts observability logger to handler's minimal interface
+func convertLogger(l obslogger.Logger) interface {
+	Info(string, map[string]interface{})
+	Error(string, map[string]interface{})
+} {
+	return &handlerLoggerAdapter{l: l}
+}
+
+type handlerLoggerAdapter struct{ l obslogger.Logger }
+
+func (h *handlerLoggerAdapter) Info(e string, d map[string]interface{})  { h.l.Info(e, d) }
+func (h *handlerLoggerAdapter) Error(e string, d map[string]interface{}) { h.l.Error(e, d) }

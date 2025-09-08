@@ -9,8 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"bytes"
-	"io")
+)
 
 // Client — клиент для Travelpayouts Data API
 type Client struct {
@@ -18,6 +17,7 @@ type Client struct {
 	token   string
 	marker  string
 	hc      *http.Client
+	logger  Logger
 }
 
 type Option func(*Client)
@@ -25,6 +25,14 @@ type Option func(*Client)
 func WithHTTPClient(hc *http.Client) Option {
 	return func(c *Client) { c.hc = hc }
 }
+
+// Logger defines minimal logging capability needed by this client
+type Logger interface {
+	ExternalAPI(apiName, endpoint string, statusCode int, duration time.Duration, metadata map[string]interface{}) error
+}
+
+// WithLogger injects a logger into the client
+func WithLogger(l Logger) Option { return func(c *Client) { c.logger = l } }
 
 func NewClient(baseURL, token, marker string, opts ...Option) *Client {
 	c := &Client{baseURL: baseURL, token: token, marker: marker, hc: http.DefaultClient}
@@ -97,21 +105,31 @@ func (c *Client) SearchCheap(ctx context.Context, p SearchParams) ([]Flight, err
 		return nil, err
 	}
 
+	start := time.Now()
 	resp, err := c.hc.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
+	if c.logger != nil {
+		_ = c.logger.ExternalAPI(
+			"travelpayouts",
+			"/v1/prices/cheap",
+			resp.StatusCode,
+			time.Since(start),
+			map[string]interface{}{
+				"origin":      p.Origin,
+				"destination": p.Destination,
+			},
+		)
+	}
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
 	}
 
 	var apiResp TravelpayoutsResponse
-	// Логируем полный ответ API для диагностики
-	bodyBytes, _ := io.ReadAll(resp.Body)
-	fmt.Printf("🔍 Travelpayouts API response body: %s\n", string(bodyBytes))
-	resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		return nil, err
 	}
