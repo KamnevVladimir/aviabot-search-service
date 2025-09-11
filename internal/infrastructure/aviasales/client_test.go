@@ -113,14 +113,28 @@ func TestClient_SearchCheap_MonthSearch(t *testing.T) {
 		t.Fatal("expected flights, got empty slice")
 	}
 
-	if flights[0].Price != 15000 {
-		t.Errorf("expected price 15000, got %d", flights[0].Price)
+	// Проверяем, что есть рейс с нужной ценой (порядок может измениться)
+	var found15000, found17500 bool
+	for _, flight := range flights {
+		if flight.Price == 15000 {
+			found15000 = true
+		}
+		if flight.Price == 17500 {
+			found17500 = true
+		}
+		if flight.Origin != "MOW" {
+			t.Errorf("expected origin MOW, got %s", flight.Origin)
+		}
+		if flight.Destination != "PAR" {
+			t.Errorf("expected destination PAR, got %s", flight.Destination)
+		}
 	}
-	if flights[0].Origin != "MOW" {
-		t.Errorf("expected origin MOW, got %s", flights[0].Origin)
+	
+	if !found15000 {
+		t.Error("expected flight with price 15000")
 	}
-	if flights[0].Destination != "PAR" {
-		t.Errorf("expected destination PAR, got %s", flights[0].Destination)
+	if !found17500 {
+		t.Error("expected flight with price 17500")
 	}
 }
 

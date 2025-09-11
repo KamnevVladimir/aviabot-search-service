@@ -31,6 +31,16 @@ func NewHandlerWithLogger(fs app.FlightSearcher, lg loggerInterface) http.Handle
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Логируем входящий запрос
+	if h.logger != nil {
+		h.logger.Info("http_request", map[string]interface{}{
+			"path":        r.URL.Path,
+			"method":      r.Method,
+			"remote_addr": r.RemoteAddr,
+			"user_agent":  r.UserAgent(),
+		})
+	}
+
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -128,6 +138,7 @@ func (h *handler) handleFlightSearch(w http.ResponseWriter, r *http.Request) {
 
 // handleFlightMessage обрабатывает запросы форматирования сообщений /flights/message
 func (h *handler) handleFlightMessage(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	q := r.URL.Query()
 
 	// Парсим параметры запроса
@@ -150,6 +161,18 @@ func (h *handler) handleFlightMessage(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{
 			"error": "origin, destination and depart_date are required",
 		})
+		if h.logger != nil {
+			durMs := time.Since(start).Milliseconds()
+			if durMs == 0 {
+				durMs = 1
+			}
+			h.logger.Error("http_request", map[string]interface{}{
+				"path":        r.URL.Path,
+				"status":      http.StatusBadRequest,
+				"success":     false,
+				"duration_ms": durMs,
+			})
+		}
 		return
 	}
 
@@ -160,6 +183,18 @@ func (h *handler) handleFlightMessage(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{
 			"error": err.Error(),
 		})
+		if h.logger != nil {
+			durMs := time.Since(start).Milliseconds()
+			if durMs == 0 {
+				durMs = 1
+			}
+			h.logger.Error("http_request", map[string]interface{}{
+				"path":        r.URL.Path,
+				"status":      http.StatusBadGateway,
+				"success":     false,
+				"duration_ms": durMs,
+			})
+		}
 		return
 	}
 
@@ -174,6 +209,19 @@ func (h *handler) handleFlightMessage(w http.ResponseWriter, r *http.Request) {
 		"count":      len(flights),
 		"passengers": passengers,
 	})
+	if h.logger != nil {
+		durMs := time.Since(start).Milliseconds()
+		if durMs == 0 {
+			durMs = 1
+		}
+		h.logger.Info("http_request", map[string]interface{}{
+			"path":        r.URL.Path,
+			"status":      http.StatusOK,
+			"success":     true,
+			"count":       len(flights),
+			"duration_ms": durMs,
+		})
+	}
 }
 
 func coalesce(a, b string) string {

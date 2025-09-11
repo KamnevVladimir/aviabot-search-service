@@ -71,20 +71,20 @@ func TestFlightSearch_LogsSuccessAndDuration(t *testing.T) {
 	okFound := false
 	for _, e := range lg.entries {
 		if e.level == "info" && e.event == "http_request" {
-			if v, ok := e.data["success"]; !ok || v.(bool) != true {
-				t.Fatalf("expected success=true in log")
+			// Ищем событие с success=true (ответ), а не входящий запрос
+			if v, ok := e.data["success"]; ok && v.(bool) == true {
+				if v, ok := e.data["count"]; !ok || int(v.(int)) != 2 {
+					t.Fatalf("expected count=2 in log")
+				}
+				if v, ok := e.data["duration_ms"]; !ok || v.(int64) <= 0 {
+					t.Fatalf("expected positive duration_ms")
+				}
+				if time.Since(start) < 0 {
+					t.Fatalf("time monotonic check")
+				}
+				okFound = true
+				break
 			}
-			if v, ok := e.data["count"]; !ok || int(v.(int)) != 2 {
-				t.Fatalf("expected count=2 in log")
-			}
-			if v, ok := e.data["duration_ms"]; !ok || v.(int64) <= 0 {
-				t.Fatalf("expected positive duration_ms")
-			}
-			if time.Since(start) < 0 {
-				t.Fatalf("time monotonic check")
-			}
-			okFound = true
-			break
 		}
 	}
 	if !okFound {
