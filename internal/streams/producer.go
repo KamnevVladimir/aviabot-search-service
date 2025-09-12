@@ -20,13 +20,13 @@ type FlightResult struct {
 
 // SearchResult представляет результат поиска авиабилетов
 type SearchResult struct {
-	RequestID     string        `json:"request_id"`
-	CorrelationID string        `json:"correlation_id"`
-	ChatID        string        `json:"chat_id"`
-	Count         int           `json:"count"`
+	RequestID     string         `json:"request_id"`
+	CorrelationID string         `json:"correlation_id"`
+	ChatID        string         `json:"chat_id"`
+	Count         int            `json:"count"`
 	Results       []FlightResult `json:"results"`
-	Error         string        `json:"error,omitempty"`
-	Timestamp     time.Time     `json:"timestamp"`
+	Error         string         `json:"error,omitempty"`
+	Timestamp     time.Time      `json:"timestamp"`
 }
 
 // RedisProducer интерфейс для публикации в Redis Stream
@@ -54,7 +54,7 @@ func (p *SearchResultProducer) Publish(ctx context.Context, result *SearchResult
 	if result.Timestamp.IsZero() {
 		result.Timestamp = time.Now()
 	}
-	
+
 	// Конвертируем в map для Redis
 	fields := map[string]interface{}{
 		"request_id":     result.RequestID,
@@ -63,7 +63,7 @@ func (p *SearchResultProducer) Publish(ctx context.Context, result *SearchResult
 		"count":          result.Count,
 		"timestamp":      result.Timestamp.Unix(),
 	}
-	
+
 	// Добавляем результаты или ошибку
 	if result.Error != "" {
 		fields["error"] = result.Error
@@ -76,13 +76,13 @@ func (p *SearchResultProducer) Publish(ctx context.Context, result *SearchResult
 		}
 		fields["results"] = string(resultsJSON)
 	}
-	
+
 	// Публикуем в Redis Stream
 	messageID, err := p.redis.XAdd(ctx, p.stream, fields)
 	if err != nil {
 		return "", fmt.Errorf("failed to publish to stream: %w", err)
 	}
-	
+
 	return messageID, nil
 }
 
@@ -96,7 +96,7 @@ func (p *SearchResultProducer) PublishSuccess(ctx context.Context, requestID, co
 		Results:       results,
 		Timestamp:     time.Now(),
 	}
-	
+
 	return p.Publish(ctx, result)
 }
 
@@ -111,6 +111,6 @@ func (p *SearchResultProducer) PublishError(ctx context.Context, requestID, corr
 		Error:         errorMsg,
 		Timestamp:     time.Now(),
 	}
-	
+
 	return p.Publish(ctx, result)
 }

@@ -10,9 +10,9 @@ func TestSearchResultProducer_PublishSuccess(t *testing.T) {
 		streams:   make(map[string][]map[string]interface{}),
 		processed: make(map[string]bool),
 	}
-	
+
 	producer := NewSearchResultProducer(mockRedis)
-	
+
 	result := &SearchResult{
 		RequestID:     "test-request-123",
 		CorrelationID: "test-correlation-456",
@@ -39,18 +39,18 @@ func TestSearchResultProducer_PublishSuccess(t *testing.T) {
 			},
 		},
 	}
-	
+
 	ctx := context.Background()
 	messageID, err := producer.Publish(ctx, result)
-	
+
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	
+
 	if messageID == "" {
 		t.Error("Expected non-empty message ID")
 	}
-	
+
 	// Проверяем что событие добавлено в stream
 	streams := mockRedis.GetStreams()
 	if len(streams["search.results"]) == 0 {
@@ -63,9 +63,9 @@ func TestSearchResultProducer_PublishError(t *testing.T) {
 		streams:   make(map[string][]map[string]interface{}),
 		processed: make(map[string]bool),
 	}
-	
+
 	producer := NewSearchResultProducer(mockRedis)
-	
+
 	result := &SearchResult{
 		RequestID:     "test-request-123",
 		CorrelationID: "test-correlation-456",
@@ -74,18 +74,18 @@ func TestSearchResultProducer_PublishError(t *testing.T) {
 		Error:         "API timeout",
 		Results:       []FlightResult{},
 	}
-	
+
 	ctx := context.Background()
 	messageID, err := producer.Publish(ctx, result)
-	
+
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	
+
 	if messageID == "" {
 		t.Error("Expected non-empty message ID")
 	}
-	
+
 	// Проверяем что событие добавлено в stream
 	streams := mockRedis.GetStreams()
 	if len(streams["search.results"]) == 0 {
@@ -98,9 +98,9 @@ func TestSearchResultProducer_EmptyResult(t *testing.T) {
 		streams:   make(map[string][]map[string]interface{}),
 		processed: make(map[string]bool),
 	}
-	
+
 	producer := NewSearchResultProducer(mockRedis)
-	
+
 	result := &SearchResult{
 		RequestID:     "test-request-123",
 		CorrelationID: "test-correlation-456",
@@ -108,16 +108,15 @@ func TestSearchResultProducer_EmptyResult(t *testing.T) {
 		Count:         0,
 		Results:       []FlightResult{},
 	}
-	
+
 	ctx := context.Background()
 	messageID, err := producer.Publish(ctx, result)
-	
+
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	
+
 	if messageID == "" {
 		t.Error("Expected non-empty message ID")
 	}
 }
-

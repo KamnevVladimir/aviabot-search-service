@@ -24,11 +24,11 @@ func (m *mockRedisClient) XReadGroup(ctx context.Context, group, consumer, strea
 	if !exists || len(streams) == 0 {
 		return nil, nil // No data available
 	}
-	
+
 	// Возвращаем первое событие и удаляем его
 	event := streams[0]
 	m.streams[stream] = streams[1:]
-	
+
 	return []map[string]interface{}{event}, nil
 }
 
@@ -56,13 +56,13 @@ func (m *mockRedisClient) XAdd(ctx context.Context, stream string, fields map[st
 	if m.streams[stream] == nil {
 		m.streams[stream] = make([]map[string]interface{}, 0)
 	}
-	
+
 	// Генерируем mock message ID
 	messageID := fmt.Sprintf("%d-0", time.Now().UnixNano())
-	
+
 	// Добавляем timestamp
 	fields["timestamp"] = time.Now().Unix()
-	
+
 	m.streams[stream] = append(m.streams[stream], fields)
 	return messageID, nil
 }

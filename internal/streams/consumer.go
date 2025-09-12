@@ -9,10 +9,10 @@ import (
 
 // SearchRequest представляет запрос на поиск авиабилетов из Redis Stream
 type SearchRequest struct {
-	RequestID     string                 `json:"request_id"`
-	CorrelationID string                 `json:"correlation_id"`
-	ChatID        string                 `json:"chat_id"`
-	Params        SearchRequestParams    `json:"params"`
+	RequestID     string              `json:"request_id"`
+	CorrelationID string              `json:"correlation_id"`
+	ChatID        string              `json:"chat_id"`
+	Params        SearchRequestParams `json:"params"`
 }
 
 // SearchRequestParams параметры поиска
@@ -55,29 +55,29 @@ func (c *SearchRequestConsumer) Consume(ctx context.Context) (*SearchRequest, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from stream: %w", err)
 	}
-	
+
 	if len(events) == 0 {
 		return nil, fmt.Errorf("no events available")
 	}
-	
+
 	event := events[0]
-	
+
 	// Парсим JSON из поля "params"
 	paramsJSON, exists := event["params"]
 	if !exists {
 		return nil, fmt.Errorf("missing params field")
 	}
-	
+
 	paramsBytes, err := json.Marshal(paramsJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal params: %w", err)
 	}
-	
+
 	var params SearchRequestParams
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal params: %w", err)
 	}
-	
+
 	// Создаем SearchRequest
 	request := &SearchRequest{
 		RequestID:     getString(event, "request_id"),
@@ -85,7 +85,7 @@ func (c *SearchRequestConsumer) Consume(ctx context.Context) (*SearchRequest, er
 		ChatID:        getString(event, "chat_id"),
 		Params:        params,
 	}
-	
+
 	// Валидируем обязательные поля
 	if request.RequestID == "" {
 		return nil, fmt.Errorf("missing request_id")
@@ -99,7 +99,7 @@ func (c *SearchRequestConsumer) Consume(ctx context.Context) (*SearchRequest, er
 	if request.Params.Destination == "" {
 		return nil, fmt.Errorf("missing destination")
 	}
-	
+
 	return request, nil
 }
 
@@ -107,7 +107,7 @@ func (c *SearchRequestConsumer) Consume(ctx context.Context) (*SearchRequest, er
 func (c *SearchRequestConsumer) ConsumeWithTimeout(ctx context.Context, timeout time.Duration) (*SearchRequest, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	
+
 	return c.Consume(ctx)
 }
 

@@ -31,10 +31,10 @@ func NewConsumerHealthMonitor() *ConsumerHealthMonitor {
 func (m *ConsumerHealthMonitor) RecordProcessing(requestID string, success bool, latency time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.requestCount++
 	m.totalLatency += latency
-	
+
 	if success {
 		m.processedCount++
 	} else {
@@ -46,17 +46,17 @@ func (m *ConsumerHealthMonitor) RecordProcessing(requestID string, success bool,
 func (m *ConsumerHealthMonitor) GetMetrics() ConsumerMetrics {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	var averageLatency time.Duration
 	if m.requestCount > 0 {
 		averageLatency = m.totalLatency / time.Duration(m.requestCount)
 	}
-	
+
 	var successRate float64
 	if m.requestCount > 0 {
 		successRate = float64(m.processedCount) / float64(m.requestCount) * 100
 	}
-	
+
 	return ConsumerMetrics{
 		ProcessedCount: m.processedCount,
 		ErrorCount:     m.errorCount,
@@ -69,7 +69,7 @@ func (m *ConsumerHealthMonitor) GetMetrics() ConsumerMetrics {
 func (m *ConsumerHealthMonitor) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.processedCount = 0
 	m.errorCount = 0
 	m.totalLatency = 0
@@ -79,31 +79,31 @@ func (m *ConsumerHealthMonitor) Reset() {
 // IsHealthy проверяет, здоров ли консьюмер
 func (m *ConsumerHealthMonitor) IsHealthy() bool {
 	metrics := m.GetMetrics()
-	
+
 	// Консьюмер считается здоровым если:
 	// 1. Обработал хотя бы один запрос
 	// 2. Успешность > 80%
 	// 3. Средняя задержка < 5 секунд
-	
+
 	if metrics.ProcessedCount == 0 && metrics.ErrorCount == 0 {
 		return true // Нет данных - считаем здоровым
 	}
-	
+
 	if metrics.SuccessRate < 80.0 {
 		return false
 	}
-	
+
 	if metrics.AverageLatency > 5*time.Second {
 		return false
 	}
-	
+
 	return true
 }
 
 // GetHealthStatus возвращает статус здоровья
 func (m *ConsumerHealthMonitor) GetHealthStatus() map[string]interface{} {
 	metrics := m.GetMetrics()
-	
+
 	return map[string]interface{}{
 		"healthy":         m.IsHealthy(),
 		"processed_count": metrics.ProcessedCount,
